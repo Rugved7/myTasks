@@ -77,3 +77,36 @@ export const login = async (req, res) => {
         res.status(500).json({ message: error.message })
     }
 }
+
+export const logout = async (req, res) => {
+    try {
+        const refreshToken = req.cookies.refreshToken;
+        if (!refreshToken) {
+            return res.status(403).json({ message: 'No refresh token found' });
+        }
+
+        const decodedToken = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+        await User.updateOne(
+            { _id: decodedToken.id },
+            { $pull: { refreshTokens: refreshToken } }
+        );
+
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            sameSite: 'strict',
+            secure: true,
+        });
+
+        res.clearCookie('accessToken', {
+            httpOnly: true,
+            sameSite: 'strict',
+            secure: true,
+        });
+
+        return res.json({ message: 'User logged out successfully' });
+    } catch (error) {
+        console.log('Error in logging user out');
+        res.status(500).json({ message: error.message });
+    }
+};
